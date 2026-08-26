@@ -1,8 +1,17 @@
-const CACHE = 'usa2026-202608261413';
-const FILE = ['./', './index.html', './icona180.png', './icona512.png'];
+const CACHE = 'usa2026-202608262244';
+
+// Senza questi l'app non esiste: se falliscono, fallisce l'installazione.
+const ESSENZIALI = ['./', './index.html'];
+// Le icone sono un di piu': se mancano o hanno un altro nome, si tira dritto.
+const FACOLTATIVI = ['./icona-180.png', './icona-512.png', './icona180.png', './icona512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILE)).then(() => self.skipWaiting()));
+  e.waitUntil((async () => {
+    const c = await caches.open(CACHE);
+    await c.addAll(ESSENZIALI);
+    await Promise.all(FACOLTATIVI.map(f => c.add(f).catch(() => {})));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', e => {
