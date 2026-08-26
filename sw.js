@@ -1,5 +1,5 @@
 const CACHE = 'usa2026-202608261413';
-const FILE = ['./', './index.html', './icona-180.png', './icona-512.png'];
+const FILE = ['./', './index.html', './icona180.png', './icona512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILE)).then(() => self.skipWaiting()));
