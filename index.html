@@ -10,8 +10,9 @@
 <meta name="theme-color" content="#11333F" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0C1A20" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex, nofollow">
-<link rel="apple-touch-icon" href="icona-180.png">
-<link rel="icon" href="icona-512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icona-180.png">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icona-180.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icona-512.png">
 <title>USA 2026 — Itinerario</title>
 <style>
 :root{
@@ -531,6 +532,19 @@ if(idx>=0){
   select(0);
 }
 document.getElementById('pie').textContent = 'Dati dal foglio USA 2026 (WIP) · versione 26/08/2026';
+
+/* L'icona puo' essere caricata come icona-180.png oppure icona180.png:
+   se il nome col trattino non risponde, si riscrivono i link con l'altro. */
+(function(){
+  const prova = new Image();
+  prova.onerror = function(){
+    document.querySelectorAll('link[rel*="icon"]').forEach(l=>{
+      const h = l.getAttribute('href');
+      if(h && h.indexOf('icona-') === 0) l.setAttribute('href', h.replace('icona-','icona'));
+    });
+  };
+  prova.src = 'icona-180.png';
+})();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
