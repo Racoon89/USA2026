@@ -10,9 +10,9 @@
 <meta name="theme-color" content="#11333F" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0C1A20" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex, nofollow">
-<link rel="apple-touch-icon" sizes="180x180" href="icona-180.png">
-<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icona-180.png">
-<link rel="icon" type="image/png" sizes="512x512" href="icona-512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icona180.png">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icona180.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icona512.png">
 <title>USA 2026 — Itinerario</title>
 <style>
 :root{
@@ -210,7 +210,6 @@ a.tel,a.web{color:var(--btn-2-fg)}
   border-radius:3px;padding:12px 14px;display:flex;align-items:center;gap:12px;
 }
 .hotel .nome{font-family:var(--display);font-size:19px;font-weight:600}
-.hotel .costo{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:2px}
 
 .nightrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
   background:var(--card);border:1px solid var(--line);border-left:3px solid var(--rowaccent);
@@ -220,7 +219,7 @@ a.tel,a.web{color:var(--btn-2-fg)}
 .nightrow .dove{font-family:var(--display);font-size:17px;font-weight:600;flex:1;line-height:1.2}
 .nightrow .dove small{display:block;font-family:var(--mono);font-size:10.5px;font-weight:400;
   letter-spacing:.06em;text-transform:uppercase;color:var(--rowaccent);margin-top:2px}
-.nightrow .eur{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.nightrow .freccia{color:var(--rowaccent);font-size:19px;line-height:1}
 .totali{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin:14px 0 0;line-height:1.7}
 
 footer{text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);padding:26px 16px 40px}
@@ -323,10 +322,41 @@ function spezza(riga){
     const taglio = Math.min(...pause);
     return [riga.slice(0,taglio).trim(), riga.slice(taglio).replace(/^[:.\s]+/,'')];
   }
-  if(riga.length <= 64) return [riga, ''];
-  let taglio = riga.lastIndexOf(' ', 56);
-  if(taglio < 24) taglio = 56;
+  if(riga.length <= 80) return [riga, ''];
+  let taglio = riga.lastIndexOf(' ', 70);
+  if(taglio < 24) taglio = 70;
   return [riga.slice(0,taglio).trim()+'…', riga.slice(taglio).trim()];
+}
+
+/* Testi lunghi: resta visibile l'inizio, il resto va in una tendina "Note". */
+const SOGLIA = 150;
+function accumula(pezzi, unione){
+  const visibili = [], resto = [];
+  let somma = 0;
+  pezzi.forEach((p, i) => {
+    if(i === 0 || (resto.length === 0 && somma + p.length <= SOGLIA)){
+      visibili.push(p); somma += p.length;
+    } else resto.push(p);
+  });
+  return [visibili.join(unione), resto.join(unione)];
+}
+function dividiCorpo(corpo){
+  if(!corpo) return ['', ''];
+  // prima si divide per righe...
+  let [visibile, resto] = corpo.indexOf('\n') >= 0
+    ? accumula(corpo.split('\n'), '\n')
+    : [corpo, ''];
+  // ...e se quel che resta a vista e' ancora un muro, si taglia per frasi
+  if(visibile.length > 220){
+    const pezzi = visibile.split('. ');
+    if(pezzi.length > 1){
+      const frasi = pezzi.map((p, i) => i < pezzi.length - 1 ? p + '.' : p);
+      const [corta, avanzo] = accumula(frasi, ' ');
+      visibile = corta;
+      resto = avanzo + (resto ? '\n' + resto : '');
+    }
+  }
+  return [visibile, resto];
 }
 
 function titolo(t){
@@ -423,20 +453,23 @@ function renderDay(i){
       }
       seg.tappe.forEach(t=>{
         const {capo, corpo} = titolo(t);
+        const [visibile, note] = dividiCorpo(corpo);
         h += `<div class="stop${t.luogo?' key':''}">
           <div class="time">${esc(t.ora)}</div>
           <div class="name">${esc(capo)}</div>
-          ${corpo?`<p class="desc">${arricchisci(corpo)}</p>`:''}`;
+          ${visibile?`<p class="desc">${arricchisci(visibile)}</p>`:''}`;
         if(t.luogo){
           h += `<div class="nav">
             <a class="btn btn-a" href="${appleUrl(t.luogo)}">Naviga</a>
             <a class="btn btn-g" href="${googleUrl(t.luogo)}" target="_blank" rel="noopener">Google Maps</a>
           </div>`;
         }
+        const tendine = note ? [{t:'Note', d:note}] : [];
         const ex = extra.get(t);
-        if(ex && ex.length){
+        if(ex) tendine.push(...ex);
+        if(tendine.length){
           h += '<div class="more">';
-          ex.forEach(e=>{ h += `<details><summary>${esc(e.t)}</summary><div class="body">${arricchisci(e.d)}</div></details>`; });
+          tendine.forEach(e=>{ h += `<details><summary>${esc(e.t)}</summary><div class="body">${arricchisci(e.d)}</div></details>`; });
           h += '</div>';
         }else{
           h += '<div style="height:9px"></div>';
@@ -450,10 +483,7 @@ function renderDay(i){
   if(g.dormire){
     h += '<div class="section">Dove si dorme</div>';
     h += `<div class="hotel">
-      <div>
-        <div class="nome">${esc(g.dormire)}</div>
-        <div class="costo">${g.costo?esc(g.costo)+' $ la notte':'costo da confermare'}</div>
-      </div>
+      <div class="nome">${esc(g.dormire)}</div>
       <a class="btn btn-a" style="margin-left:auto" href="${appleUrl(g.dormire + ', USA')}">Naviga</a>
     </div>`;
   }
@@ -467,22 +497,18 @@ function renderNotti(){
   app.style.removeProperty('--accent-l');
   app.style.removeProperty('--accent-d');
   let h = '<div class="pad"><h1 class="route" style="margin-top:22px">Le notti</h1>'
-        + '<p class="meta">14 pernottamenti · prezzi dal foglio itinerario</p>';
-  let tot = 0;
+        + '<p class="meta">14 pernottamenti</p>';
   VIAGGIO.forEach((g,i)=>{
     if(!g.dormire) return;
     const d = new Date(g.data+'T12:00:00');
-    const costo = parseFloat(g.costo) || 0;
-    tot += costo;
     h += `<button type="button" class="nightrow" data-giorno="${i}" style="--rowaccent:${scuro.matches?g.aD:g.aL}">
       <div class="quando">${d.getDate()} ${MESI[d.getMonth()]}</div>
       <div class="dove">${esc(g.dormire)}${g.regione.toLowerCase()===g.dormire.toLowerCase()?'':`<small>${esc(g.regione)}</small>`}</div>
-      <div class="eur">${costo?costo.toFixed(0)+' $':'—'}</div>
+      <div class="freccia" aria-hidden="true">›</div>
     </button>`;
   });
-  h += `<p class="totali">Totale pernottamenti: <b>${tot.toFixed(0)} $</b><br>
-    Nel foglio non ci sono nomi, indirizzi o numeri di prenotazione: aggiungeteli
-    nella colonna Pernottamento e li porto qui.</p></div>`;
+  h += `<p class="totali">Nel foglio non ci sono nomi, indirizzi o numeri di prenotazione:
+    aggiungeteli nella colonna Pernottamento e li porto qui.</p></div>`;
   app.innerHTML = h;
   app.querySelectorAll('.nightrow').forEach(b=>b.addEventListener('click',()=>{
     mostraGiorni(); select(parseInt(b.dataset.giorno,10));
@@ -531,19 +557,19 @@ if(idx>=0){
   notice.textContent = 'Oggi non è un giorno di viaggio — apro il 12 settembre';
   select(0);
 }
-document.getElementById('pie').textContent = 'Dati dal foglio USA 2026 (WIP) · versione 26/08/2026';
+document.getElementById('pie').textContent = 'Dati dal foglio USA 2026 (WIP) · versione 31/08/2026';
 
-/* L'icona puo' essere caricata come icona-180.png oppure icona180.png:
-   se il nome col trattino non risponde, si riscrivono i link con l'altro. */
+/* L'icona puo' essere caricata come icona180.png oppure icona-180.png:
+   se il nome senza trattino non risponde, si riscrivono i link con l'altro. */
 (function(){
   const prova = new Image();
   prova.onerror = function(){
     document.querySelectorAll('link[rel*="icon"]').forEach(l=>{
       const h = l.getAttribute('href');
-      if(h && h.indexOf('icona-') === 0) l.setAttribute('href', h.replace('icona-','icona'));
+      if(h && h.indexOf('icona') === 0) l.setAttribute('href', h.replace('icona','icona-'));
     });
   };
-  prova.src = 'icona-180.png';
+  prova.src = 'icona180.png';
 })();
 
 if('serviceWorker' in navigator){
